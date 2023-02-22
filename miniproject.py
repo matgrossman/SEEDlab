@@ -38,36 +38,38 @@ def calibrateCamera(camera):
         rawCapture = PiRGBArray(camera,size=resolution)
         
         camera.iso = 200
-        sleep(2)
+        time.sleep(2)
         camera.shutter_speed = camera.exposure_speed
-        camera.exposure_speed = 'off'
         g = camera.awb_gains
+        camera.exposure_mode = 'off'
         camera.awb_mode = 'off'
         camera.awb_gains = g
-        camera.capture_sequence(['image%02d.jpg' % i for i in range(5)])
+        lst = []
+        lst.append(camera.capture_sequence(['image%02d.jpg' % i for i in range(5)]))
         print("displaying test images")
-        for i in range(5):
-            cv2.imshow('test images press q to quit')
-            if cv2.waitKey(0) & 0xFF == ord('q'):
-                break
+        break
+#        for i in lst:
+#            cv2.imshow('test images press q to quit')
+#            if cv2.waitKey(0) & 0xFF == ord('q'):
+#                break
 
 calibrateCamera(camera)
 
-# rawCapture = PiRGBArray(camera, size=resolution)
-# time.sleep(0.1)
-# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-#     image = frame.array
-#     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#     (corners,ids,rejected) = cv2.aruco.detectMarkers(gray, arucoDict,parameters=arucoParam)
-#     cv2.aruco.drawDetectedMarkers(gray, corners,ids)
-#     if ids == None:
-#         print("No IDS found")
-#     else:
-#         print(ids)
-#         for i in range(len(ids)):
-#             phi = getPhi(corners[i])
-#             print(ids[i],", ", phi,sep='')
-#     cv2.imshow("video",gray)
-#     if cv2.waitKey(1)& 0xFF == ord('q'):
-#         break
-#     rawCapture.truncate(0)
+rawCapture = PiRGBArray(camera, size=resolution)
+time.sleep(0.1)
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+ image = frame.array
+ gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+ (corners,ids,rejected) = cv2.aruco.detectMarkers(gray, arucoDict,parameters=arucoParam)
+ cv2.aruco.drawDetectedMarkers(gray, corners,ids)
+ if ids == None:
+     print("No IDS found")
+ else:
+     print(ids)
+     for i in range(len(ids)):
+         phi = getQuadrant(corners[i])
+         print(ids[i],", ", phi,sep='')
+# cv2.imshow("video",gray)
+ if cv2.waitKey(1)& 0xFF == ord('q'):
+     break
+ rawCapture.truncate(0)
