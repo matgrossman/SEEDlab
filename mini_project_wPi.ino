@@ -2,8 +2,8 @@
 #include <Wire.h>
 #define SLAVE_ADDRESS 0x04
 
-int data_to_send = 0b1011101001; 
-byte data[32] = {0};
+int data_to_send = 0b1011101001;
+byte data[32] = { 0 };
 
 double kp = 1.404;
 double ki = .4404;
@@ -11,7 +11,7 @@ double i = 0;
 double e = 0;
 double e_past = 0;
 double ts = 0;
-double tc = millis() / 1000;
+double tc = 0;
 double r = 0;
 double y = 0;
 double theta = 0;
@@ -69,23 +69,24 @@ void loop() {
     case 3:
       r = 3 * PI / 2;
       break;
+    default:
+      r = r;
+      break;
   }
-  spin(0, 1);
   count = (wheel.read() - zero) % 3200;
-  r = command;
   y = (-count / fullroto * 2 * PI);
   e = r - y;
   i = i + ts * e;
   u = kp * e + ki * i;
 
-//  data[0] = y >> 56;
-//  data[1] = y >> 48;
-//  data[2] = y >> 40;
-//  data[3] = y >> 32;
-//  data[4] = y >> 24;
-//  data[5] = y >> 16;
-//  data[6] = y >> 8;
-//  data[7] = y & 0xFF;
+  data[0] = int(count) >> 56;
+  data[1] = int(count) >> 48;
+  data[2] = int(count) >> 40;
+  data[3] = int(count) >> 32;
+  data[4] = int(count) >> 24;
+  data[5] = int(count) >> 16;
+  data[6] = int(count) >> 8;
+  data[7] = int(count) & 0xFF;
 
   if (abs(u) > umax) {
     u = signbit(u) * umax;
@@ -102,6 +103,8 @@ void loop() {
   pwm = abs((u / 7) * 256);
 
   spin(pwm, dir);
+  Serial.print(r);
+  Serial.print("\t");
   Serial.print(e);
   Serial.print("\t");
   Serial.print(u);
@@ -118,21 +121,21 @@ void spin(int PWM, int dir) {
 }
 
 // callback for received data
-void receiveData(int byteCount){
+void receiveData(int byteCount) {
 
-Serial.print("data received: ");
-while(Wire.available()) {
-  command = Wire.read();
-  Serial.println(command);
+  Serial.print("data received: ");
+  while (Wire.available()) {
+    command = Wire.read();
+    Serial.println(command);
   }
 }
 
 
 
 // callback for sending data
-void sendBlock(){
+void sendBlock() {
   Serial.print("sending data: ");
-//  Serial.println(data[0]);
-//  Serial.println(data[1]);
-  Wire.write(data, 8); // 8 is number of bytes in data
+  //  Serial.println(data[0]);
+  //  Serial.println(data[1]);
+  Wire.write(data, 8);  // 8 is number of bytes in data
 }
