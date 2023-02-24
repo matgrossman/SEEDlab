@@ -6,7 +6,7 @@ const int input_B = 5;
 int State_A = 0;
 int State_B = digitalRead(input_B);
 double count = 0;
-int pwm = 150;
+int pwm = 255;
 int dir = 1;
 
 const int M1_speed = 9, M1_dir = 7;
