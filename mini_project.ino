@@ -20,7 +20,6 @@ int currentTime = 0;
 int timePrev = 0;
 double velo = 0;
 
-
 Encoder wheel(input_A, input_B);
 
 void setup() {
