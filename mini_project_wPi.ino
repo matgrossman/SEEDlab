@@ -1,12 +1,13 @@
 #include <Encoder.h>
 #include <Wire.h>
+
+//used for I2C
 #define SLAVE_ADDRESS 0x04
+byte data[2] = { 0 };
 
-int data_to_send = 0b1011101001;
-byte data[32] = { 0 };
-
-double kp = 1.404;
-double ki = .4404;
+//variable declarations
+double kp = 4;  //1.404
+double ki = 0;  //.4404
 double i = 0;
 double e = 0;
 double e_past = 0;
@@ -22,9 +23,11 @@ double fullroto = 3200;
 int pwm = 0;
 int dir = 0;
 int zero = 0;
-const int umax = 7;
+const int umax = 8;
 int command;
+int temp_command;
 
+//variables for encoder
 const int input_A = 2;
 const int input_B = 5;
 const int camera = 12;
@@ -32,11 +35,10 @@ const int M1_speed = 9;
 const int M1_dir = 7;
 const int m_enable = 4;
 const int topi = 13;
-
-
 Encoder wheel(input_A, input_B);
 
 void setup() {
+  //setting desired pins to input or output, setting baud rate
   pinMode(topi, OUTPUT);
   pinMode(camera, INPUT);
   pinMode(M1_speed, OUTPUT);
@@ -53,6 +55,7 @@ void setup() {
 }
 
 void loop() {
+  //case to determine what value pi is relaying
   switch (command) {
     case 0:
       r = 0;
@@ -69,50 +72,43 @@ void loop() {
     case 3:
       r = 3 * PI / 2;
       break;
-    default:
-      r = r;
-      break;
   }
+
+//calculating radians position based off wheel count and values for controller
   count = (wheel.read() - zero) % 3200;
-  y = (-count / fullroto * 2 * PI);
+  y = ((-count / fullroto) * 2 * PI);
   e = r - y;
   i = i + ts * e;
   u = kp * e + ki * i;
 
-  data[0] = int(count) >> 56;
-  data[1] = int(count) >> 48;
-  data[2] = int(count) >> 40;
-  data[3] = int(count) >> 32;
-  data[4] = int(count) >> 24;
-  data[5] = int(count) >> 16;
-  data[6] = int(count) >> 8;
-  data[7] = int(count) & 0xFF;
+//transfering wheel counts to pi
+  data[0] = int(count) >> 8;
+  data[1] = int(count) & 0xFF;
 
-  if (abs(u) > umax) {
-    u = signbit(u) * umax;
-    e = signbit(e) * min(umax / kp, abs(e));
-    i = (u - kp * e) / ki;
-  }
-
+//determining if wheel should spin c or cc
   if (u < 0) {
-    dir = 0;
-  } else {
     dir = 1;
+  } else {
+    dir = 0;
   }
 
-  pwm = abs((u / 7) * 256);
+//converts voltage value to pwm value
+  pwm = abs((u / 8) * 255);
+  Serial.println(pwm);
 
-  spin(pwm, dir);
-  Serial.print(r);
-  Serial.print("\t");
-  Serial.print(e);
-  Serial.print("\t");
-  Serial.print(u);
-  Serial.print("\t");
-  Serial.print(pwm);
-  Serial.print("\n");
+  //limiter for if PWM value is greater than 255
+  if (pwm > 255) {
+    pwm = 255;
+  }
+
+//writing direction 
+  analogWrite(M1_speed, pwm);
+  digitalWrite(M1_dir, dir);
+
+//recalculating
   ts = (millis() / 1000) - tc;
   tc = millis() / 1000;
+  delay(50);
 }
 
 void spin(int PWM, int dir) {
@@ -123,9 +119,12 @@ void spin(int PWM, int dir) {
 // callback for received data
 void receiveData(int byteCount) {
 
-  Serial.print("data received: ");
   while (Wire.available()) {
-    command = Wire.read();
+    temp_command = Wire.read();
+    if (temp_command != 5) {
+      command = temp_command;
+    }
+    Serial.println(r);
     Serial.println(command);
   }
 }
@@ -134,8 +133,5 @@ void receiveData(int byteCount) {
 
 // callback for sending data
 void sendBlock() {
-  Serial.print("sending data: ");
-  //  Serial.println(data[0]);
-  //  Serial.println(data[1]);
-  Wire.write(data, 8);  // 8 is number of bytes in data
+  Wire.write(data, 2);  // 2 is number of bytes in data
 }
