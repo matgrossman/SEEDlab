@@ -1,1 +1,2 @@
-"test" 
+Main repository for the SEED lab project. Organized by Project ## with relevant files in each folder. The purpose of the project is to implement a robot using Arduinos and
+RPis to detect Aruco markers and drive to them sequentially.

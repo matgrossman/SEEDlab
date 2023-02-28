@@ -1,0 +1,2 @@
+Mini Project Code. Designed to integrate the Raspberry Pi and Arduino to detect Aruco Markers on the camera and move a motor with a wheel attached to a spot determined
+by the quadrant of the camera the marker appears in.
