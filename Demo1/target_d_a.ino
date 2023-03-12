@@ -104,14 +104,14 @@ void setup() {
 }
 
 void loop() {
-  if (!ang) {
+  if (true) {
     currentCount1 = wheel1.read() * -1;
     currentCount2 = wheel2.read();
     current_d1 = 2 * PI * r * (currentCount1 - M1_zero) * (1 / fullroto);
     current_d2 = 2 * PI * r * (currentCount2 - M2_zero) * (1 / fullroto);
-    //current_dtot = (current_d1 + current_d2) / 2;
+    current_dtot = (current_d1 + current_d2) / 2;
     current_a = ((current_d1 - current_d2) / d_between) * (180 / PI);
-    //e = target_d - current_dtot;
+    e = target_d - current_dtot;
     e_a = target_a - current_a;
 
     if (abs(e_a) > 1.0){
