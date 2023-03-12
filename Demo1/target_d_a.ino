@@ -2,30 +2,32 @@
 #include <Encoder.h>
 #include <Wire.h>
 
-//change given angle and distance
-double target_d = 0;
+//given angle and distance targets
+double target_d = 24;
 double target_a = 180;
 
 //current angle and position
 double current_dtot = 0;
 double current_a = 0;
-bool checkA = false;
 
-//variables for controller
-double kp = 1.5; 
+//variables for distance controller
+double kp = 1.5;
 double ki = 0;
+double kp1 = 0;
+double kp2 = 0;
 double u = 0;
-double offset = 0;
-double i = 0;
+double u1 = 0;
+double u2 = 0;
 double e = 0;
-double e_a = 0;
+
+//variables for angle controller
 double kpa = 0.2025;
 double kia = 0;
 double ua = 0;
-double ia = 0;
-double ea = 0;
+double offset = 0;
 double ts = 0;
 double tc = 0;
+double e_a = 0;
 
 //variables for motor 1 power and encoder
 const int input_A1 = 3;
@@ -70,7 +72,7 @@ int prevCount1 = 0;
 int currentCount1 = 0;
 int prevCount2 = 0;
 int currentCount2 = 0;
-const double d_between = 13.6;
+const double d_between = 13.38; //13.6
 bool ang = false;
 
 void setup() {
@@ -89,11 +91,6 @@ void setup() {
   pinMode(topi, OUTPUT);
   pinMode(camera, INPUT);
 
-  // // define callbacks for i2c communication
-  // Wire.begin(SLAVE_ADDRESS);
-  // Wire.onReceive(receiveData);
-  // Wire.onRequest(sendBlock);
-
   //zero values at start
   current_dtot = 0;
   current_a = 0;
@@ -104,56 +101,75 @@ void setup() {
 }
 
 void loop() {
-  if (true) {
+  if (!ang) {
     currentCount1 = wheel1.read() * -1;
     currentCount2 = wheel2.read();
     current_d1 = 2 * PI * r * (currentCount1 - M1_zero) * (1 / fullroto);
     current_d2 = 2 * PI * r * (currentCount2 - M2_zero) * (1 / fullroto);
-    current_dtot = (current_d1 + current_d2) / 2;
     current_a = ((current_d1 - current_d2) / d_between) * (180 / PI);
-    e = target_d - current_dtot;
     e_a = target_a - current_a;
+    e = target_d;
+    offset = kpa * e_a;
 
-    if (abs(e_a) > 1.0){
-      ia = ia + ts * e_a;
-      offset = kpa*e_a + kia*i;
-      if(offset > 0){
-        dir1 = 1;
-        dir2 = 0;
-      }
-      else{
-        dir1 = 0;
-        dir2 = 1;
-      }
-      pwmoffset = abs((offset/8) * 255);
-      if(pwmoffset < 30)pwmoffset = 30;
-      pwm1 = pwmoffset/2;
-      pwm2 = pwmoffset/2;
+    if (offset > 0) {
+      dir1 = 1;
+      dir2 = 0;
+    } else {
+      dir1 = 0;
+      dir2 = 1;
     }
 
-    else{
-      i= i + ts * e;
-      u = kp * e + ki * i;
-      if (u < 0) {  //check directions!!!
-        dir1 = 0;
-      } else {
-        dir1 = 1;
-      }
+    pwmoffset = abs((offset / 8) * 255);
+    if (pwmoffset < 30) pwmoffset = 30;
+    pwm1 = pwmoffset / 2;
+    pwm2 = pwmoffset / 2;
 
-      dir2 = dir1;
-      pwm2 = abs(((u / 8) * 255));
-      // }
-      pwm1 = abs(pwm2 - 18);
+    if (abs(e_a) <= 1) {
+      delay(1000);
+      ang = true;
+      M1_zero = wheel1.read() * -1;
+      M2_zero = wheel2.read();
+      current_d1 = 0;
+      current_d2 = 0;
     }
-  //   //why divide by 8 again
   }
 
-  //limit pwm to max 255
+  if (ang) {
+    currentCount1 = wheel1.read() * -1;
+    currentCount2 = wheel2.read();
+    current_d1 = 2 * PI * r * (currentCount1 - M1_zero) * (1 / fullroto);
+    current_d2 = 2 * PI * r * (currentCount2 - M2_zero) * (1 / fullroto);
+    Serial.print(current_d1);
+    Serial.print('\t');
+    Serial.print(current_d2);
+    Serial.print('\t');
+    current_dtot = (current_d1 + current_d2) / 2;
+    e = target_d - current_dtot;
+
+    //using controller values to get voltage output
+    //i = i + ts * e;
+    u = kp * e;
+
+    //determine if u value means forwards or backwards
+    if (u < 0) {
+      dir1 = 0;
+    } else {
+      dir1 = 1;
+    }
+    dir2 = dir1;
+
+    //redo with individual controllers
+    pwm2 = abs(((u / 8) * 255));
+    pwm1 = pwm2;
+  }
+
+
+  //limit pwm to max 255             ISSUES WITH INDIVDUAL PWMS
   if (pwm1 > 255) {
-    pwm1 = 150;
+    pwm1 = 200;
   }
   if (pwm2 > 255) {
-    pwm2 = 150;
+    pwm2 = 200;
   }
 
   //recalculating
@@ -165,6 +181,7 @@ void loop() {
   analogWrite(M2_speed, pwm2);
   digitalWrite(M1_dir, dir1);
   digitalWrite(M2_dir, dir2);
+
   Serial.print(e_a);
   Serial.print("\t");
   Serial.print(e);
@@ -181,5 +198,5 @@ void loop() {
   // Serial.print(currentCount1);
   // Serial.print("\t");
   // Serial.println(currentCount2);
-  delay(50);  //GET BETTER DELAY VALUE
+  delay(25);  //GET BETTER DELAY VALUE
 }
