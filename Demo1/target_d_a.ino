@@ -1,9 +1,8 @@
 //included libraries
 #include <Encoder.h>
 #include <Wire.h>
-
 //given angle and distance targets
-double target_d = 24;
+double target_d = 120 * 0.9;
 double target_a = 180;
 
 //current angle and position
@@ -11,7 +10,7 @@ double current_dtot = 0;
 double current_a = 0;
 
 //variables for distance controller
-double kp = 1.5;
+double kp = 1.2;
 double ki = 0;
 double kp1 = 0;
 double kp2 = 0;
@@ -21,7 +20,7 @@ double u2 = 0;
 double e = 0;
 
 //variables for angle controller
-double kpa = 0.2025;
+double kpa = 0.1;
 double kia = 0;
 double ua = 0;
 double offset = 0;
@@ -30,6 +29,8 @@ double tc = 0;
 double e_a = 0;
 
 //variables for motor 1 power and encoder
+const double mFudge = 0.97;
+const int maxPWM = 225;
 const int input_A1 = 3;
 const int input_B1 = 6;
 const int M1_dir = 7;
@@ -43,7 +44,7 @@ Encoder wheel1(input_A1, input_B1);
 //variables for motor 1 control
 int dir1 = 0;
 int pwm1 = 0;
-
+double i = 0;
 int pwmoffset = 0;
 
 //variables for motor 2 power and encoder
@@ -72,7 +73,7 @@ int prevCount1 = 0;
 int currentCount1 = 0;
 int prevCount2 = 0;
 int currentCount2 = 0;
-const double d_between = 13.38; //13.6
+const double d_between = 13.3;  //13.3< x<13.6
 bool ang = false;
 
 void setup() {
@@ -120,15 +121,22 @@ void loop() {
     }
 
     pwmoffset = abs((offset / 8) * 255);
-    if (pwmoffset < 30) pwmoffset = 30;
-    pwm1 = pwmoffset / 2;
+    if (pwmoffset < 50) pwmoffset = 50;
+    pwm1 = round((pwmoffset / 2) * mFudge);
     pwm2 = pwmoffset / 2;
-
-    if (abs(e_a) <= 1) {
-      delay(1000);
+    if (pwm1 > maxPWM*mFudge) {
+      pwm1 = round(maxPWM*mFudge);
+    }
+    if (pwm2 > maxPWM) {
+      pwm2 = maxPWM;
+    }
+    if (abs(e_a) <= 0.1) {
+      delay(500);
       ang = true;
       M1_zero = wheel1.read() * -1;
       M2_zero = wheel2.read();
+      pwm1 = 0;
+      pwm2 = 0;
       current_d1 = 0;
       current_d2 = 0;
     }
@@ -147,7 +155,7 @@ void loop() {
     e = target_d - current_dtot;
 
     //using controller values to get voltage output
-    //i = i + ts * e;
+    // i = i + ts * e;
     u = kp * e;
 
     //determine if u value means forwards or backwards
@@ -158,18 +166,18 @@ void loop() {
     }
     dir2 = dir1;
 
+    //limit pwm to max 255             ISSUES WITH INDIVDUAL PWMS
+    
+
     //redo with individual controllers
     pwm2 = abs(((u / 8) * 255));
-    pwm1 = pwm2;
-  }
-
-
-  //limit pwm to max 255             ISSUES WITH INDIVDUAL PWMS
-  if (pwm1 > 255) {
-    pwm1 = 200;
-  }
-  if (pwm2 > 255) {
-    pwm2 = 200;
+    pwm1 = round(pwm2  * mFudge);
+    if (pwm1 > maxPWM) {
+      pwm1 = round(maxPWM*mFudge);
+    }
+    if (pwm2 > maxPWM) {
+      pwm2 = maxPWM;
+    }
   }
 
   //recalculating
